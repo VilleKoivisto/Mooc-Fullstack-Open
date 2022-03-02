@@ -41,7 +41,13 @@ const ShowCountries = (props) => {
   );
 
   if (filtered.length > 10) {
-    return <div>Too many matches, please specify filter...</div>;
+    return (
+      <div>
+        Too many matches
+        <br/>
+        Please specify filter...
+      </div>
+    );
   } else if (filtered.length === 1) {
     return (
       <CountryDetails
