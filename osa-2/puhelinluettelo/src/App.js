@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+// TODO: refaktoroi komponentit ulos -> ./components
+
 // yksittäisen henkilön tulostava komponentti
 const Person = (props) => (
   <div>
