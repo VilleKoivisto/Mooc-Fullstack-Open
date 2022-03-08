@@ -1,51 +1,9 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 
-// TODO: refaktoroi komponentit ulos -> ./components
-
-// yksittäisen henkilön tulostava komponentti
-const Person = (props) => (
-  <div>
-    {props.person}: {props.number}
-  </div>
-);
-
-// puhelinluettelon tulostaus
-const FilteredPersonsList = (props) =>
-  props.persons
-    .filter((person) =>
-      person.name.toLowerCase().includes(props.filtered.toLowerCase())
-    )
-    .map((filteredPerson) => (
-      <Person
-        key={filteredPerson.name}
-        person={filteredPerson.name}
-        number={filteredPerson.number}
-      />
-    ));
-
-// filtteröintisyötteen vastaanotto
-const FilterPersonsInput = (props) => (
-  <div>
-    filter <input value={props.filtered} onInput={props.handleFilterChange} />
-  </div>
-);
-
-// henkilön lisäyksen toteutus
-const AddPersonForm = (props) => (
-  <form onSubmit={props.addPerson}>
-    <div>
-      name: <input value={props.newName} onChange={props.handleNameChange} />
-    </div>
-    <div>
-      number:{" "}
-      <input value={props.newNumber} onChange={props.handleNumberChange} />
-    </div>
-    <div>
-      <button type="submit">add</button>
-    </div>
-  </form>
-);
+import FilterPersonsInput from './components/filter_input'
+import FilteredPersonsList from "./components/print_filtered";
+import AddPersonForm from "./components/addperson";
+import dataService from "./services/dataserver";
 
 // kaikkien komponenttien äiti
 // -----------------------------------------------------------------------------------
@@ -58,30 +16,69 @@ const App = () => {
 
   // haetaan data effect-hookin avulla
   useEffect(() => {
-    axios.get("http://localhost:3001/persons").then((response) => {
-      setPersons(response.data);
+    dataService
+    .getAll()
+    .then((response) => {
+      setPersons(response);
     });
   }, []);
 
-  // lisää henkilö luetteloon
-  const addPerson = (event) => {
+  const addNumber = (event) => {
     event.preventDefault();
 
-    // testaa löytyykö nimi jo luettelosta
-    if (persons.some((e) => e.name === newName)) {
-      window.alert(`Name ${newName} is already in the phonebook`);
-      setNewName("");
-    } else {
-      const personObject = {
-        name: newName,
-        number: newNumber,
-      };
+    const personObject = {
+      name: newName,
+      number: newNumber,
+    };
 
-      setPersons(persons.concat(personObject));
-      setNewName("");
-      setNewNumber("");
+    // testaa löytyykö nimi jo luettelosta
+    if (persons.some((entry) => entry.name === newName)) {
+      let replace = window.confirm(`Name ${newName} is already in the phonebook. Replace the old number?`);
+      
+      if (replace) {
+        let id = persons.find((person) => person.name === newName).id
+
+        dataService
+        .update(personObject, id)
+        .then(() => {
+          dataService
+          .getAll()
+          .then((response) => {
+            setPersons(response);
+          });
+        })
+      } else {
+        return console.log('Replace cancelled')
+      }
+    } else {
+      dataService
+      .create(personObject)
+      .then((response) => {
+        setPersons(persons.concat(response));
+        setNewName("");
+        setNewNumber("");
+      })
     }
   };
+
+  // poista henkilön tiedot luettelosta
+  const deletePerson = (id, person) => {
+
+    let askConfirmation = window.confirm(`Delete ${person}?`)
+
+    if (askConfirmation) {
+      dataService
+      .deleteOne(id)
+      .then((response) => {
+        console.log(`${response.status}: id ${id} deleted from the phonebook`)
+        dataService
+        .getAll()
+        .then((response) => {
+          setPersons(response);
+        });
+      })
+    }
+  }
 
   // handlerit
   const handleNameChange = (event) => {
@@ -96,6 +93,7 @@ const App = () => {
     setFiltered(event.target.value);
   };
 
+  // -----------------------------------------------------------------------------------
   return (
     <div>
       <h1>Phonebook</h1>
@@ -108,7 +106,7 @@ const App = () => {
       <h2>Add new</h2>
 
       <AddPersonForm
-        addPerson={addPerson}
+        addPerson={addNumber}
         newName={newName}
         handleNameChange={handleNameChange}
         newNumber={newNumber}
@@ -117,7 +115,7 @@ const App = () => {
 
       <h2>Numbers</h2>
 
-      <FilteredPersonsList persons={persons} filtered={filtered} />
+      <FilteredPersonsList persons={persons} filtered={filtered} deletePerson={deletePerson}/>
     </div>
   );
 };
